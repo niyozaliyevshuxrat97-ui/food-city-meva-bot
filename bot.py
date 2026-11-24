@@ -178,21 +178,30 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = Application.builder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(CallbackQueryHandler(callbacks))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_messages))
 
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from threading import Thread
+
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"FOOD CITY MEVA BOT ishlayapti")
+
+        def log_message(self, *args):
+            pass
+
     port = int(os.environ.get("PORT", "10000"))
-    public_url = os.environ["RENDER_EXTERNAL_URL"].rstrip("/")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=TOKEN,
-        webhook_url=f"{public_url}/{TOKEN}",
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,
-    )
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    Thread(target=server.serve_forever, daemon=True).start()
+
+    app.run_polling()
+
 
 if __name__ == "__main__":
     main()
